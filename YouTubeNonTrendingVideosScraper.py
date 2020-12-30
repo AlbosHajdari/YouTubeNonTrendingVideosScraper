@@ -1,23 +1,30 @@
+import requests#, clipboard, time
 from bs4 import BeautifulSoup
 import pandas as pd
-import time
+
+
+def api_request(parameter):
+    request_url = f"https://www.youtube.com/?gl={parameter}"
+    request = requests.get(request_url)
+    if request.status_code == 429:
+        print("Temp-Banned due to excess requests, please wait and continue later")
+        sys.exit()
+    return request.text
 
 
 
 if __name__ == "__main__":
 
-    f = open("htmlElements.txt", "r", encoding='UTF-8')
-    text = f.read()
-    text1 = str(text)
-    text1 = text1.replace('\n', ' ').replace('\r', '').replace(' ', '')
-    text1 = text1.split("href=\"/watch?v=");
+    htmlSourceCode = api_request("US")
+    soup = BeautifulSoup(htmlSourceCode)
+    #clipboard.copy(str(soup))
+    text1 = str(soup).split("url\":\"/watch?v=")
 
-    for i in range(1,len(text1),2):
-        text2 = text1[i].split("\">",1)[0]
-        print(int(i/2))
+    for i in range(1,len(text1),1):
+        text2 = text1[i].split("\",\"",1)[0]
+        print(i)
         print(text2)
         #time.sleep(.05)
-        i=i+1
 
 
     #dataSet = pd.read_csv('originalData.csv')
