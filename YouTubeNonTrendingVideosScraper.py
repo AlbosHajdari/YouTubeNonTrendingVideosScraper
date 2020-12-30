@@ -1,36 +1,53 @@
-import requests#, clipboard, time
-from bs4 import BeautifulSoup
-import pandas as pd
+import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import pandas as pd 
+from selenium.webdriver.common.by import By 
+from selenium.webdriver.support.ui import WebDriverWait 
+from selenium.webdriver.support import expected_conditions as EC
 
 
-def api_request(parameter):
-    request_url = f"https://www.youtube.com/?gl={parameter}"
-    request = requests.get(request_url)
-    if request.status_code == 429:
-        print("Temp-Banned due to excess requests, please wait and continue later")
-        sys.exit()
-    return request.text
+driver = webdriver.Firefox()
 
+def driver_get_and_scroll(country):
+    driver.get("https://www.youtube.com/?gl="+country)
 
+    SCROLL_PAUSE_TIME = 1
+
+    # Get scroll height
+    last_height = driver.execute_script("return document.documentElement.scrollHeight")
+
+    while True:
+        # Scroll down to bottom
+        driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
+
+        # Wait to load page
+        time.sleep(SCROLL_PAUSE_TIME)
+
+        # Calculate new scroll height and compare with last scroll height
+        new_height = driver.execute_script("return document.documentElement.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
+    print("DONE SCROLLING")
+
+def get_IDs():
+    user_data = driver.find_elements_by_xpath('//*[@id="thumbnail"]')
+    IDs = []
+    for i in user_data:
+                attribute = str(i.get_attribute('href'))
+                attribute = attribute.replace('https://www.youtube.com/watch?v=', '')  #get only the IDs
+                IDs.append(attribute)
+    return IDs
 
 if __name__ == "__main__":
-
-    htmlSourceCode = api_request("US")
-    soup = BeautifulSoup(htmlSourceCode)
-    #clipboard.copy(str(soup))
-    text1 = str(soup).split("url\":\"/watch?v=")
-
-    for i in range(1,len(text1),1):
-        text2 = text1[i].split("\",\"",1)[0]
+    driver_get_and_scroll("US")
+    IDs = get_IDs()
+    del IDs[-1] #the attribute of the last element is NONE because it doesn't belong to a video item/element, so I removed it
+    
+    
+    i=1
+    for id in IDs:
         print(i)
-        print(text2)
-        #time.sleep(.05)
-
-
-    #dataSet = pd.read_csv('originalData.csv')
-
-    #dataSet.to_csv('updatedData.csv')
-
-    #lista = getIdsList()
-    #data = get_data(lista)
-    #writeDataToFile(data)
+        print(id)
+        i = i+1
