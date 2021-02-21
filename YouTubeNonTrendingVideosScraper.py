@@ -1,4 +1,4 @@
-import time, clipboard
+import time, clipboard, requests
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import pandas as pd 
@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-driver = webdriver.Firefox()
+#driver = webdriver.Firefox()
 
 def driver_get_and_scroll(country):
     driver.get("https://www.youtube.com/?gl="+country)
@@ -59,16 +59,38 @@ def splitInGroupsOf50(beginning, end):
     #getData(stringParamIDs)
     #addData(getData)
 
+def getData(stringParamIDs, apiKey):
+    # Builds the URL and requests the JSON from it
+    request_url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id={stringParamIDs}&key={apiKey}"
+    request = requests.get(request_url)
+    if request.status_code == 429:
+        print("Temp-Banned due to excess requests, please wait and continue later")
+        sys.exit()
+    items = request.json().get('items')
+    return items
+    #return data
+
 if __name__ == "__main__":
-    countriesList = ["AU"]#, "CA", "IE", "JM", "MT", "NZ", "GB", "US"]
-    for country in countriesList:
-        print("COUNTRY = " +country)
-        driver_get_and_scroll(country)
-        IDs = get_IDs()
-        #del IDs[-1] #the attribute of the last element is NONE because it doesn't belong to a video item/element, so I removed it
-        get_string_param_IDs(IDs)
-
-        #stringParamIDs = get_string_param_IDs(IDs)
-        #print (stringParamIDs)
-        #clipboard.copy(stringParamIDs)
-
+    #countriesList = ["AU"]#, "CA", "IE", "JM", "MT", "NZ", "GB", "US"]
+    #for country in countriesList:
+    #    print("COUNTRY = " +country)
+    #    driver_get_and_scroll(country)
+    #    IDs = get_IDs()
+    #    #del IDs[-1] #the attribute of the last element is NONE because it doesn't belong to a video item/element, so I removed it
+    #    get_string_param_IDs(IDs)
+    stringParamIDs = "y_bwKW6V1lw,5qap5aO4i9A"
+    apiKey = "AIzaSyCWhAzyPoNV74327R60On43KOEckztmUpI"
+    data = getData(stringParamIDs,apiKey)
+    df = pd.DataFrame(columns = ['id', 'publishedAt', 'videot_title', 'description',
+                                 'thumbnail_url', 'channelTitle', 'categoryId'])
+    for line in data:
+        df = df.append({'id' : line['id'], 
+                        'publishedAt' : line['snippet']['publishedAt'], 
+                        'videot_title' : line['snippet']['title'],  
+                        'description' : line['snippet']['description'],  
+                        'thumbnail_url' : line['snippet']['thumbnails']['maxres']['url'],  
+                        'channelTitle' : line['snippet']['channelTitle'],  
+                        'categoryId' : line['snippet']['categoryId']},
+                ignore_index = True)
+    print(df)
+    df.to_csv('file_name.csv')
