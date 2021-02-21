@@ -42,11 +42,22 @@ def get_IDs():
     return IDs
 
 def get_string_param_IDs(IDs):
+    total = len(IDs)
+    groupsOf50 = int(total/50)
+    for g in range(0,groupsOf50):
+        splitInGroupsOf50(g*50,g*50+50)
+    splitInGroupsOf50(groupsOf50*50,total)
+    #return stringParamIDs
+
+def splitInGroupsOf50(beginning, end):
     stringParamIDs = ""
-    for id in IDs:
-        stringParamIDs = stringParamIDs + str(id) + ","
+    for i in range(beginning,end):
+        stringParamIDs = stringParamIDs+str(IDs[i]) +","
     stringParamIDs = stringParamIDs[:-1]
-    return stringParamIDs
+    print("Size = " + str(len(stringParamIDs)))
+    print("Grupa = " + stringParamIDs)
+    #getData(stringParamIDs)
+    #addData(getData)
 
 if __name__ == "__main__":
     countriesList = ["AU"]#, "CA", "IE", "JM", "MT", "NZ", "GB", "US"]
@@ -54,26 +65,8 @@ if __name__ == "__main__":
         print("COUNTRY = " +country)
         driver_get_and_scroll(country)
         IDs = get_IDs()
-        del IDs[-1] #the attribute of the last element is NONE because it doesn't belong to a video item/element, so I removed it
-        total = len(IDs)
-        groupsOf50 = int(total/50)
-        for g in range(0,groupsOf50):
-            stringParamIDs = ""
-            for i in range(g*50,g*50+50):
-                stringParamIDs = stringParamIDs+str(IDs[i]) +","
-            stringParamIDs = stringParamIDs[:-1]
-            print("Size = " + str(len(stringParamIDs)))
-            print("Grupa = " + stringParamIDs)
-            #getData(stringParamIDs)
-            #addData(getData)
-        stringParamIDs = ""
-        for i in range(groupsOf50*50,total):
-            stringParamIDs = stringParamIDs+str(IDs[i]) +","
-        stringParamIDs = stringParamIDs[:-1]
-        print("Size = " + str(len(stringParamIDs)))
-        print("Grupa = " + stringParamIDs)
-        #getData(stringParamIDs)
-        #addData(getData)
+        #del IDs[-1] #the attribute of the last element is NONE because it doesn't belong to a video item/element, so I removed it
+        get_string_param_IDs(IDs)
 
         #stringParamIDs = get_string_param_IDs(IDs)
         #print (stringParamIDs)
