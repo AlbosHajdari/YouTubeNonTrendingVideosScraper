@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 driver = webdriver.Firefox()
-
+apiKey = ""
 df = pd.DataFrame(columns = ['id', 'published_At', 'videot_title', 'description', 'thumbnail_url',
                              'channel_Title', 'category_Id', 'trending', 'date_registered'])
 
@@ -16,7 +16,7 @@ df = pd.DataFrame(columns = ['id', 'published_At', 'videot_title', 'description'
 def driver_get_and_scroll(country):
     driver.get("https://www.youtube.com/?gl="+country)
 
-    SCROLL_PAUSE_TIME = 1
+    SCROLL_PAUSE_TIME = 2
 
     # Get scroll height
     last_height = driver.execute_script("return document.documentElement.scrollHeight")
@@ -35,7 +35,7 @@ def driver_get_and_scroll(country):
         last_height = new_height
     print("DONE SCROLLING")
 
-def get_IDs():
+def get_nonTrendingIDs():
     user_data = driver.find_elements_by_xpath('//*[@id="thumbnail"]')
     IDs = []
     for i in user_data:
@@ -43,31 +43,31 @@ def get_IDs():
                 attribute = attribute.replace('https://www.youtube.com/watch?v=', '')  #get only the IDs
                 if attribute!="None":
                     IDs.append(attribute)
-    print("IDS = " + str(IDs))
     return IDs
 
-def get_string_param_IDs(IDs):
-    print("Start of get_string_param_IDs")
+def get_AllNonTrendingData(IDs):
+    print("Start of get_AllNonTrendingData")
     total = len(IDs)
     groupsOf50 = int(total/50)
     for g in range(0,groupsOf50):
-        splitInGroupsOf50(g*50,g*50+50)
-    splitInGroupsOf50(groupsOf50*50,total)
-    print("End of get_string_param_IDs")
+        get_NonTrendingRowsInGroupsOf50(g*50,g*50+50)
+    get_NonTrendingRowsInGroupsOf50(groupsOf50*50,total)
+    print("End of get_AllNonTrendingData")
     #return stringParamIDs
 
-def splitInGroupsOf50(beginning, end):
-    print("Start of splitInGroupsOf50")
+def get_NonTrendingRowsInGroupsOf50(beginning, end):
+    print("Start of get_NonTrendingRowsInGroupsOf50")
     stringParamIDs = ""
     for i in range(beginning,end):
-        stringParamIDs = stringParamIDs+str(IDs[i]) +","
+        stringParamIDs = stringParamIDs+str(nonTrendingIDs[i]) +","
     stringParamIDs = stringParamIDs[:-1]
-    data = getData(stringParamIDs,apiKey)
-    addData(data)
-    print("End of splitInGroupsOf50")
+    data = get_NonTrendingDataFromAPIrequest(stringParamIDs)
+    update_DataFrame(data, False)
+    print("End of get_NonTrendingRowsInGroupsOf50")
 
-def getData(stringParamIDs, apiKey):
-    print("Start of getData")
+def get_NonTrendingDataFromAPIrequest(stringParamIDs):
+    global apiKey
+    print("Start of get_NonTrendingDataFromAPIrequest")
     # Builds the URL and requests the JSON from it
     request_url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id={stringParamIDs}&key={apiKey}"
     request = requests.get(request_url)
@@ -75,12 +75,13 @@ def getData(stringParamIDs, apiKey):
         print("Temp-Banned due to excess requests, please wait and continue later")
         sys.exit()
     items = request.json().get('items')
-    print("ITEMS = " + str(items))
-    print("End of getData")
+    if items is None:
+        print(str(items))
+    print("End of get_NonTrendingDataFromAPIrequest")
     return items
 
-def addData(data):
-    print("Start of addData")
+def update_DataFrame(data, trendingOrNotTrending):
+    print("Start of update_DataFrame")
     global df
     for line in data:
         df = df.append({'id' : line['id'], 
@@ -90,18 +91,55 @@ def addData(data):
                         'thumbnail_url' : line['snippet']['thumbnails']['default']['url'],  
                         'channel_Title' : line['snippet']['channelTitle'],  
                         'category_Id' : line['snippet']['categoryId'],
-                        'trending' : 'false',
+                        'trending' : trendingOrNotTrending,
                         'date_registered' : time.strftime("%d.%m.%Y")},
                 ignore_index = True)
-    print("End of addData")
+    print("End of update_DataFrame")
+
+def get_TrendingDataFromAPIrequest(country, nextPageToken):
+    global apiKey
+    print("Start of get_TrendingDataFromAPIrequest")
+    # Builds the URL and requests the JSON from it
+    if(nextPageToken==""):
+        request_url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=50&regionCode={country}&key={apiKey}"
+    else:
+        request_url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=50&pageToken={nextPageToken}&regionCode={country}&key={apiKey}"
+    request = requests.get(request_url)
+    if request.status_code == 429:
+        print("Temp-Banned due to excess requests, please wait and continue later")
+        sys.exit()
+    items = request.json().get('items')
+    if "nextPageToken" in request.json():
+        nextPageToken = request.json().get('nextPageToken')
+    else:
+        nextPageToken = "doesNotExist"
+    if items is None:
+        print(str(items))
+    print("End of get_TrendingDataFromAPIrequest")
+    return items, nextPageToken
+
+def get_TrendingRowsInGroupsOf50(country):
+    nextPageToken = ""
+
+    while(nextPageToken!="doesNotExist"):
+        data = get_TrendingDataFromAPIrequest(country, nextPageToken);
+        nextPageToken = data[1]
+        update_DataFrame(data[0], True)
 
 if __name__ == "__main__":
-    apiKey = ""
-    countriesList = ["AU"]#, "CA", "IE", "JM", "MT", "NZ", "GB", "US"]
+    countriesList = ["US", "CA", "JM", "AU", "NZ", "GB", "IE", "MT"]#,, , 
     for country in countriesList:
         print("COUNTRY = " +country)
+        ### Start of TRENDING ###
+        get_TrendingRowsInGroupsOf50(country)
+        ### End of TRENDING ###
+
+        ### Start of NON-TRENDING ###
         driver_get_and_scroll(country)
-        IDs = get_IDs()
-        #del IDs[-1] #the attribute of the last element is NONE because it doesn't belong to a video item/element, so I removed it
-        get_string_param_IDs(IDs)
+        nonTrendingIDs = get_nonTrendingIDs()
+        get_AllNonTrendingData(nonTrendingIDs)
+        ### End of NON-TRENDING ###
+        df = df.drop_duplicates(subset=['id'])
+        
         df.to_csv(country+"_"+time.strftime("%d.%m.%Y")+".csv")
+        df = pd.DataFrame(columns=df.columns)
